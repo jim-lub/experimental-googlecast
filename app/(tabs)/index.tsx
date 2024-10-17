@@ -1,70 +1,115 @@
-import { Image, StyleSheet, Platform } from 'react-native';
-
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import { useCallback, useState } from "react";
+import { StyleSheet, View, Text, Button, ScrollView } from "react-native";
+import GoogleCast, {
+  CastButton,
+  useCastDevice,
+  useDevices,
+  useRemoteMediaClient,
+  Device,
+} from "react-native-google-cast";
 
 export default function HomeScreen() {
+  const device = useCastDevice();
+  const discoveryManager = GoogleCast.getDiscoveryManager();
+  const sessionManager = GoogleCast.getSessionManager();
+  
+  const devices = useDevices();
+  const [getDeviceResult, setGetDeviceResult] = useState<Device[]>();
+
+  const getDevicesWithDiscoveryManager = useCallback(async () => {
+    const devices = await discoveryManager.getDevices()
+    setGetDeviceResult(devices)
+  }, [])
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({ ios: 'cmd + d', android: 'cmd + m' })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      <View style={styles.section}>
+        <Text style={styles.title}>1. CastButton</Text>
+        <Text style={styles.description}>
+          {
+            "- Double devices\n- Can always connect to devices (even after backgrounding app)"
+          }
+        </Text>
+
+        <CastButton style={{ width: 24, height: 24, tintColor: "black" }} />
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.title}>2. useDevices()</Text>
+        <Text style={styles.description}>
+          {
+            "- Double devices\n- Cannot connect after backgrounding app\n- Devices disappear when hot reloading after backgrounding app"
+          }
+        </Text>
+        {devices.map((d, index) => {
+          const active = device?.deviceId === d.deviceId;
+
+          return (
+            <Button
+              color={active ? "green" : undefined}
+              key={d.deviceId + index}
+              onPress={() =>
+                active
+                  ? sessionManager.endCurrentSession()
+                  : sessionManager.startSession(d.deviceId)
+              }
+              title={d.friendlyName}
+            />
+          );
+        })}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.title}>3. getDevices() (with discoveryManager)</Text>
+        <Text style={styles.description}>
+          {"- Double devices\n- Cannot find devices after backgrounding app"}
+        </Text>
+        <Button onPress={getDevicesWithDiscoveryManager} title="Find devices" />
+
+        {getDeviceResult?.map((d, index) => {
+          const active = device?.deviceId === d.deviceId;
+
+          return (
+            <Button
+              color={active ? "green" : undefined}
+              key={d.deviceId + index}
+              onPress={() =>
+                active
+                  ? sessionManager.endCurrentSession()
+                  : sessionManager.startSession(d.deviceId)
+              }
+              title={d.friendlyName}
+            />
+          );
+        })}
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
   },
-  stepContainer: {
-    gap: 8,
+  contentContainer: {
+    paddingTop: 128,
+    paddingHorizontal: 16,
+  },
+  section: {
+    minWidth: 200,
+    borderBottomWidth: 1,
+    borderBottomColor: "grey",
+    paddingVertical: 16,
+  },
+  title: {
+    fontWeight: "bold",
+    fontSize: 16,
     marginBottom: 8,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  description: {
+    fontSize: 11,
+    fontWeight: "normal",
+    fontStyle: "italic",
+    marginBottom: 16,
   },
 });
